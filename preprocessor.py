@@ -36,31 +36,3 @@ class Preprocessor :
             return self.roberta_call(dataset)
         else :
             return self.bert_call(dataset)
-    
-class Padding :
-    def __init__(self, tokenizer, length) :
-        self.tokenizer = tokenizer
-        self.length = length
-
-    def __call__(self, dataset) :
-        premise = dataset['premise']
-        hypothesis = dataset['hypothesis']    
-
-        p_dataset = []
-        h_dataset = []
-        size = len(dataset['index'])
-        for i in range(size) :
-            p = premise[i]
-            h = hypothesis[i]
-
-            p_len = self.length - len(self.tokenizer.tokenize(p))
-            p = p + ' '.join([self.tokenizer.pad_token] * p_len)
-            p_dataset.append(p)
-
-            h_len = self.length - len(self.tokenizer.tokenize(h))
-            h = h + ' '.join([self.tokenizer.pad_token] * h_len)
-            h_dataset.append(h)
-
-        dataset['premise'] = p_dataset
-        dataset['hypothesis'] = h_dataset
-        return dataset

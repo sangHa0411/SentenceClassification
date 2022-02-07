@@ -29,11 +29,13 @@ def train(args):
     print('\nLoad Dataset')
     loader = Loader('./data/train_data.csv', './data/dev_data.csv')
     train_dset, validation_dset = loader.get_data()
+    train_dset = train_dset.shuffle(seed=args.seed)
+    validation_dset = validation_dset.shuffle(seed=args.seed)
 
     # -- Tokenizing Dataset
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    # -- Optmizer 
+    # # -- Optmizer 
     print('\nOptimize Tokenizer')
     optimizer = Optimizer(tokenizer, './tokenizer', './data/unk_chars.csv')
     tokenizer = optimizer.load()
@@ -142,24 +144,22 @@ if __name__ == '__main__':
     parser.add_argument('--PLM', type=str, default='klue/bert-base', help='model type (default: klue/bert-base)')
 
     # -- training arguments
-    parser.add_argument('--lr', type=float, default=3e-5, help='learning rate (default: 3e-5)')
-    parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train (default: 3)')
+    parser.add_argument('--lr', type=float, default=2e-5, help='learning rate (default: 2e-5)')
+    parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train (default: 5)')
     parser.add_argument('--train_batch_size', type=int, default=32, help='train batch size (default: 32)')
-    parser.add_argument('--weight_decay', type=float, default=1e-4, help='strength of weight decay (default: 1e-4)')
-    parser.add_argument('--warmup_steps', type=int, default=1000, help='number of warmup steps for learning rate scheduler (default: 1000)')
+    parser.add_argument('--weight_decay', type=float, default=1e-3, help='strength of weight decay (default: 1e-3)')
+    parser.add_argument('--warmup_steps', type=int, default=200, help='number of warmup steps for learning rate scheduler (default: 200)')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='gradient_accumulation_steps (default: 1)')
 
-
     # -- validation arguments
-    parser.add_argument('--validation_ratio', type=float, default=0.2, help='validation data ratio')
     parser.add_argument('--eval_batch_size', type=int, default=16, help='eval batch size (default: 16)')
     parser.add_argument('--max_len', type=int, default=128, help='max length of tensor (default: 128)')
     parser.add_argument('--evaluation_strategy', type=str, default='steps', help='evaluation strategy to adopt during training, steps or epoch (default: steps)')
     
     # -- save & log
-    parser.add_argument('--save_steps', type=int, default=500, help='model save steps')
+    parser.add_argument('--save_steps', type=int, default=300, help='model save steps')
     parser.add_argument('--logging_steps', type=int, default=100, help='training log steps')
-    parser.add_argument('--eval_steps', type=int, default=500, help='evaluation steps')
+    parser.add_argument('--eval_steps', type=int, default=300, help='evaluation steps')
 
     # -- Seed
     parser.add_argument('--seed', type=int, default=42, help='random seed (default: 42)')

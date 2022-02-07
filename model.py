@@ -7,11 +7,10 @@ from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 from transformers.modeling_outputs import SequenceClassifierOutput
 from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel, RobertaModel
 
-# failed
 class PooledRobertaClassificationHead(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.dense = nn.Linear(config.hidden_size*3, config.hidden_size)
+        self.dense = nn.Linear(config.hidden_size*2, config.hidden_size)
         classifier_dropout = (
             config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         )
@@ -62,23 +61,20 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
             head_mask=head_mask,
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
+            output_hidden_states=True,
             return_dict=return_dict,
         )
         sequence_output = outputs[0]
+        hidden_states = outputs[1]
+
+        midterm_layer = int(self.config.num_hidden_layers/2)
+        midterm_output = hidden_states[midterm_layer]
         
         cls_output = sequence_output[:,0]
-        sep_output = sequence_output[:,self.config.sep_poistion+1]
-        end_output = sequence_output[:,-1]
+        cls_midterm_output = midterm_output[:,0]
 
-        pooled_output = torch.cat([cls_output, sep_output, end_output], dim=1)
+        pooled_output = torch.cat([cls_output, cls_midterm_output], dim=1)
         logits = self.classifier(pooled_output)
-
-        """
-         cls_output = outputs[0][:,0] # encoded vector of cls token (batch_size, hidden_size)
-        sep_output = outputs[0][:,self.sep_pos] # encoded vector of sep token (batch_size, hidden_size)
-        pooled_output = torch.cat([cls_output, sep_output], dim=1) # encodded vector (batch_size, hidden_size * 2)
-        """
 
         loss = None
         if labels is not None:
