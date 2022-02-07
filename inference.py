@@ -25,6 +25,7 @@ def inference(args):
     print('\nLoad Dataset')
     test_df = pd.read_csv(args.dataset)
     test_dset = Dataset.from_pandas(test_df)    
+    print(test_dset)
     
     # -- Tokenizer
     print('\nLoad Tokenizer')
@@ -37,7 +38,7 @@ def inference(args):
         size = len(dataset['index'])
         for i in range(size) :
             data = dataset['premise'][i] + ' [SEP] ' + dataset['hypothesis'][i]
-            inputs.append(input)
+            inputs.append(data)
         dataset['inputs'] = inputs
         return dataset
     test_dset = test_dset.map(preprocess, batched=True)
@@ -61,15 +62,15 @@ def inference(args):
     # -- Config & Model
     print('\nLoad Model')
     config =  AutoConfig.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config = config).to(device)
+    model = RobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
 
     # -- Collator
     collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
     # -- Trainer
     trainer = Trainer(
-        model=model,                         # the instantiated 🤗 Transformers model to be trained
-        data_collator=collator,              # collator
+        model=model, 
+        data_collator=collator, 
     )
 
     # -- Inference
@@ -105,5 +106,6 @@ if __name__ == '__main__':
     parser.add_argument('--PLM', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
     parser.add_argument('--tokenizer', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
     
+    args = parser.parse_args()
     inference(args)
 
