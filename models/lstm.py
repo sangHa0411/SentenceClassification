@@ -5,26 +5,7 @@ from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from transformers.modeling_outputs import SequenceClassifierOutput
-from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel, RobertaModel
-
-class PooledRobertaClassificationHead(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.dense = nn.Linear(config.hidden_size*2, config.hidden_size)
-        classifier_dropout = (
-            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
-        )
-        self.dropout = nn.Dropout(classifier_dropout)
-        self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
-
-    def forward(self, features, **kwargs):
-        x = self.dropout(features)
-        x = self.dense(x)
-        x = torch.tanh(x)
-        x = self.dropout(x)
-        x = self.out_proj(x)
-        return x
-
+from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel, RobertaModel, RobertaClassificationHead
 
 class RobertaForSequenceClassification(RobertaPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"position_ids"]
@@ -35,7 +16,15 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
         self.config = config
 
         self.roberta = RobertaModel(config, add_pooling_layer=False)
-        self.classifier = PooledRobertaClassificationHead(config)
+        self.lstm = nn.LSTM(input_size=config.hidden_size, 
+          hidden_size=int(config.hidden_size/2), 
+          num_layers=3, 
+          batch_first=True, 
+          dropout=config.hidden_dropout_prob, 
+          bidirectional=True
+        )
+
+        self.classifier = RobertaClassificationHead(config)
 
     def forward(
         self,
@@ -64,19 +53,21 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
             output_hidden_states=True,
             return_dict=return_dict,
         )
-        sequence_output = outputs[0]
+        print(outputs[0].shape)
         hidden_states = outputs[1]
+        last_hidden_states = hidden_states[-1]
 
-        midterm_layer = int(self.config.num_hidden_layers/2)
-        midterm_output = hidden_states[midterm_layer]
-        
-        cls_output = sequence_output[:,0]
-        cls_midterm_output = midterm_output[:,0]
+        batch_size, seq_size, hidden_size = last_hidden_states.shape
+        device = last_hidden_states.device
 
-        pooled_output = torch.cat([cls_output, cls_midterm_output], dim=1)
-        logits = self.classifier(pooled_output)
+        h = torch.zeros(2*3, batch_size, hidden_size).to(device)
+        c = torch.zeros(2*3, batch_size, int(hidden_size/2)).to(device)
 
+        lstm_outputs, (h,c) = self.lstm(last_hidden_states, (h,c))
+        print(lstm_outputs.shape)
+        logits = self.classifier(lstm_outputs)
         loss = None
+        outputs.hidden_states = None
         if labels is not None:
             if self.config.problem_type is None:
                 if self.num_labels == 1:

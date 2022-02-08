@@ -87,7 +87,7 @@ def inference(args):
     print('\nSaving Results')
     test_df['label'] = labels
     test_df = test_df.drop(columns=['premise', 'hypothesis'])
-    test_df.to_csv(args.output_dir, index=False)
+    test_df.to_csv(os.path.join(args.output_dir, 'result_data.csv'), index=False)
 
 
 if __name__ == '__main__':

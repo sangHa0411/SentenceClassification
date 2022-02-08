@@ -5,16 +5,16 @@ import random
 import argparse
 import numpy as np
 
-from loader import Loader
-from optimizer import Optimizer
-from tokenizer import Tokenizer
-from preprocessor import Preprocessor
+from utils.loader import Loader
+from utils.optimizer import Optimizer
+from utils.tokenizer import Tokenizer
+from utils.preprocessor import Preprocessor
+from utils.metrics import compute_metrics
+from models.model import RobertaForSequenceClassification
 
 from dotenv import load_dotenv
-from metrics import compute_metrics
 from transformers import (AutoTokenizer, 
     AutoConfig, 
-    AutoModelForSequenceClassification, 
     Trainer, 
     TrainingArguments, 
     DataCollatorWithPadding
@@ -66,7 +66,7 @@ def train(args):
     config.num_labels = 3
 
     print('\nLoad Model')
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config = config).to(device)
+    model = RobertaForSequenceClassification.from_pretrained(MODEL_NAME, config = config).to(device)
 
     # -- Training Argument
     training_args = TrainingArguments(
@@ -109,20 +109,20 @@ def train(args):
     trainer.evaluate()
 
 def main(args):
-    load_dotenv(dotenv_path=args.dotenv_path)
-    WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
-    wandb.login(key=WANDB_AUTH_KEY)
+    # load_dotenv(dotenv_path=args.dotenv_path)
+    # WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
+    # wandb.login(key=WANDB_AUTH_KEY)
 
-    wandb_name = f"PLM:{args.PLM}_epochs:{args.epochs}_lr:{args.lr}"
-    wandb.init(
-        entity="sangha0411",
-        project="daycon - NLU", 
-        name=wandb_name,
-        group='TRAIN')
+    # wandb_name = f"PLM:{args.PLM}_epochs:{args.epochs}_lr:{args.lr}"
+    # wandb.init(
+    #     entity="sangha0411",
+    #     project="daycon - NLU", 
+    #     name=wandb_name,
+    #     group='TRAIN')
 
-    wandb.config.update(args)
+    # wandb.config.update(args)
     train(args)
-    wandb.finish()
+    # wandb.finish()
 
 def seed_everything(seed):
     torch.manual_seed(seed)
