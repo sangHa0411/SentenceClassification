@@ -10,11 +10,11 @@ from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
 from utils.preprocessor import Preprocessor
 from utils.metrics import compute_metrics
-from models.model import RobertaForSequenceClassification
 
 from dotenv import load_dotenv
 from transformers import (AutoTokenizer, 
     AutoConfig, 
+    AutoModelForSequenceClassification,
     Trainer, 
     TrainingArguments, 
     DataCollatorWithPadding
@@ -32,32 +32,6 @@ def train(args):
     train_dset = train_dset.shuffle(seed=args.seed)
     validation_dset = validation_dset.shuffle(seed=args.seed)
 
-    # -- Tokenizing Dataset
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-
-    # # -- Optmizer 
-    print('\nOptimize Tokenizer')
-    optimizer = Optimizer(tokenizer, './tokenizer', './data/unk_chars.csv')
-    tokenizer = optimizer.load()
-
-    # -- Preprocessing Dataset
-    print('\nPreprocess Dataset')
-    label_dict = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
-    preprocessor = Preprocessor(model_type=args.PLM, label_dict=label_dict)
-
-    train_dset = train_dset.map(preprocessor, batched=True)
-    validation_dset = validation_dset.map(preprocessor, batched=True)
-
-    print('\nEncoding Dataset')
-    convertor = Tokenizer(model_type=args.PLM, tokenizer=tokenizer, max_input_length=args.max_len)
-    print('Trainin Dataset')
-    train_dset = train_dset.map(convertor, batched=True, remove_columns=train_dset.column_names)
-    print(train_dset)
-
-    print('Validation Dataset')
-    validation_dset = validation_dset.map(convertor, batched=True, remove_columns=validation_dset.column_names)
-    print(validation_dset)
-
     # -- Device
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -66,7 +40,35 @@ def train(args):
     config.num_labels = 3
 
     print('\nLoad Model')
-    model = RobertaForSequenceClassification.from_pretrained(MODEL_NAME, config = config).to(device)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
+    print('Model : %s' %str(model))
+
+    # -- Tokenizing Dataset
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+    # -- Optmizer 
+    print('\nOptimize Tokenizer')
+    if os.path.exists('./data/unk_chars.csv') :
+        optimizer = Optimizer(tokenizer, './tokenizer', './data/unk_chars.csv')
+        tokenizer = optimizer.load()
+
+    # -- Preprocessing Dataset
+    print('\nPreprocess Dataset')
+    label_dict = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
+    preprocessor = Preprocessor(args.PLM, label_dict=label_dict)
+    train_dset = train_dset.map(preprocessor, batched=True)
+    validation_dset = validation_dset.map(preprocessor, batched=True)
+
+    print('\nEncoding Dataset')
+    convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len)
+
+    print('Trainin Dataset')
+    train_dset = train_dset.map(convertor, batched=True, remove_columns=train_dset.column_names)
+    print(train_dset)
+
+    print('Validation Dataset')
+    validation_dset = validation_dset.map(convertor, batched=True, remove_columns=validation_dset.column_names)
+    print(validation_dset)
 
     # -- Training Argument
     training_args = TrainingArguments(
@@ -109,20 +111,20 @@ def train(args):
     trainer.evaluate()
 
 def main(args):
-    # load_dotenv(dotenv_path=args.dotenv_path)
-    # WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
-    # wandb.login(key=WANDB_AUTH_KEY)
+    load_dotenv(dotenv_path=args.dotenv_path)
+    WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
+    wandb.login(key=WANDB_AUTH_KEY)
 
-    # wandb_name = f"PLM:{args.PLM}_epochs:{args.epochs}_lr:{args.lr}"
-    # wandb.init(
-    #     entity="sangha0411",
-    #     project="daycon - NLU", 
-    #     name=wandb_name,
-    #     group='TRAIN')
+    wandb_name = f"PLM:{args.PLM}_epochs:{args.epochs}_lr:{args.lr}"
+    wandb.init(
+        entity="sangha0411",
+        project="daycon - NLU", 
+        name=wandb_name,
+        group='TRAIN')
 
-    # wandb.config.update(args)
+    wandb.config.update(args)
     train(args)
-    # wandb.finish()
+    wandb.finish()
 
 def seed_everything(seed):
     torch.manual_seed(seed)

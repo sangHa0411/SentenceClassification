@@ -5,7 +5,7 @@ from sklearn.metrics import (accuracy_score,
     auc
 )
 
-def klue_re_auprc(probs, labels):
+def auprc_score(probs, labels):
     labels = np.eye(3)[labels]
     score = np.zeros((3,))
     for c in range(3):
@@ -22,7 +22,7 @@ def compute_metrics(pred):
 
     label_indices = list(range(3))
     f1 = f1_score(labels, preds, average="micro", labels=label_indices) * 100.0
-    auprc = klue_re_auprc(probs, labels)
+    auprc = auprc_score(probs, labels)
     acc = accuracy_score(labels, preds)
     return {
         'micro f1 score': f1,
