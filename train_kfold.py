@@ -53,7 +53,7 @@ def train(args):
     # -- Preprocessing Dataset
     print('\nPreprocess Dataset')
     label_dict = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
-    preprocessor = Preprocessor(args.PLM, label_dict=label_dict)
+    preprocessor = Preprocessor(label_dict=label_dict)
     dset = dset.map(preprocessor, batched=True)
 
     print('\nEncoding Dataset')
@@ -66,17 +66,24 @@ def train(args):
     # -- Collator
     collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
+    WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
     for i in range(args.k_fold) :
-        print('\n%dth Training' %(i+1))
-        WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
+        print('\n%dth Training' %(i+1))    
         wandb.login(key=WANDB_AUTH_KEY)
-
         wandb_name = args.log_name + '_' + str(i+1)
         output_dir = args.output_dir + '_' + str(i+1)
         logging_dir = args.logging_dir + '_' + str(i+1)
 
+        wandb.init(entity="sangha0411", project="daycon - NLU", name=wandb_name, group='TRAIN')
+        wandb.config.update(args)
+
         gap = int(len(dset) / args.k_fold)
-        training_dset = dset.select(range(i*gap, (i+1)*gap))
+        ids = list(range(len(dset)))
+        del_ids = list(range(i*gap, (i+1)*gap))
+
+        training_ids = set(ids) - set(del_ids)
+        training_ids = list(training_ids)
+        training_dset = dset.select(training_ids)
 
         # -- Training Argument
         training_args = TrainingArguments(
@@ -105,9 +112,6 @@ def train(args):
         # -- Training
         print('Training Strats')
         trainer.train()
-
-        wandb.init(entity="sangha0411", project="daycon - NLU", name=wandb_name, group='TRAIN')
-        wandb.config.update(args)
         wandb.finish()
 
 def main(args):
@@ -144,6 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('--warmup_steps', type=int, default=200, help='number of warmup steps for learning rate scheduler (default: 200)')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='gradient_accumulation_steps (default: 1)')
     parser.add_argument('--k_fold', type=int, default=5, help='k fold size (default: 5)')
+    parser.add_argument('--max_len', type=int, default=128, help='max input sequence length (default: 128)')
 
     # -- save & log
     parser.add_argument('--save_steps', type=int, default=300, help='model save steps')
