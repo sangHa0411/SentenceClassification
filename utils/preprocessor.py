@@ -1,7 +1,6 @@
 
 class Preprocessor :
-    def __init__(self, model_type, label_dict) :
-        self.model_type = model_type
+    def __init__(self, label_dict) :
         self.label_dict = label_dict
 
     def __call__(self, dataset) :

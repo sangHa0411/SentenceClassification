@@ -63,10 +63,9 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
             output_hidden_states=True,
             return_dict=return_dict,
         )
-        sequence_output = outputs[0]
         hidden_states = outputs[1]
 
-        cls_output = sequence_output[:,0] * 0.6
+        cls_output = hidden_states[-1][:,0] * 0.6
         midterm_output1 = hidden_states[-2][:,0] * 0.3
         midterm_output2 = hidden_states[-3][:,0] * 0.1
         
