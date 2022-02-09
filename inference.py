@@ -1,18 +1,14 @@
-import os
-import wandb
+
 import torch
-import random
 import argparse
 import pandas as pd
 import numpy as np
 
 from datasets import Dataset
-from model import RobertaForSequenceClassification
 from transformers import (AutoTokenizer, 
     AutoConfig, 
     AutoModelForSequenceClassification, 
     Trainer, 
-    TrainingArguments, 
     DataCollatorWithPadding
 )
 
@@ -62,7 +58,7 @@ def inference(args):
     # -- Config & Model
     print('\nLoad Model')
     config =  AutoConfig.from_pretrained(MODEL_NAME)
-    model = RobertaForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
 
     # -- Collator
     collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
@@ -87,14 +83,13 @@ def inference(args):
     print('\nSaving Results')
     test_df['label'] = labels
     test_df = test_df.drop(columns=['premise', 'hypothesis'])
-    test_df.to_csv(os.path.join(args.output_dir, 'result_data.csv'), index=False)
-
+    test_df.to_csv(args.output_file, index=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # -- Result directory
-    parser.add_argument('--output_dir', type=str, default='./results', help='trained model output directory')
+    parser.add_argument('--output_file', type=str, default='./result_data.csv', help='trained model output directory')
 
     # -- Dataset
     parser.add_argument('--dataset', type=str, default='./data/test_data.csv', help='test dataset directory')

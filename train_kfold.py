@@ -38,9 +38,6 @@ def train(args):
     config =  AutoConfig.from_pretrained(MODEL_NAME)
     config.num_labels = 3
 
-    print('\nLoad Model')
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
-
     # -- Tokenizing Dataset
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
@@ -68,6 +65,10 @@ def train(args):
 
     WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
     for i in range(args.k_fold) :
+
+        print('\nLoad Model')
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
+
         print('\n%dth Training' %(i+1))    
         wandb.login(key=WANDB_AUTH_KEY)
         wandb_name = args.log_name + '_' + str(i+1)
