@@ -17,7 +17,7 @@ class ClassificationHead(nn.Module):
         self.dropout = nn.Dropout(classifier_dropout)
         self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
 
-    def forward(self, features, ):
+    def forward(self, features):
         x = self.dropout(features)
         x = self.dense(x)
         x = torch.tanh(x)

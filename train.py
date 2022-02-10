@@ -42,7 +42,6 @@ def train(args):
     config.num_labels = 3
 
     print('\nLoad Model')
-
     if args.model_type == 'base' :
         model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
     else :
