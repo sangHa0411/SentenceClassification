@@ -65,9 +65,9 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
         )
         hidden_states = outputs[1]
 
-        cls_output = hidden_states[-1][:,0] * 0.6
+        cls_output = hidden_states[-1][:,0] * 0.5
         midterm_output1 = hidden_states[-2][:,0] * 0.3
-        midterm_output2 = hidden_states[-3][:,0] * 0.1
+        midterm_output2 = hidden_states[-3][:,0] * 0.2
         
         pooled_output = cls_output + midterm_output1 + midterm_output2
         logits = self.classifier(pooled_output)
@@ -88,3 +88,4 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+

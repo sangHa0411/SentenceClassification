@@ -3,12 +3,14 @@ import wandb
 import torch
 import random
 import argparse
+import importlib
 import numpy as np
 
 from utils.loader import Loader
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
 from utils.preprocessor import Preprocessor
+from utils.collator import DataCollatorForMaskPadding
 from utils.metrics import compute_metrics
 
 from dotenv import load_dotenv
@@ -17,7 +19,7 @@ from transformers import (AutoTokenizer,
     AutoModelForSequenceClassification,
     Trainer, 
     TrainingArguments, 
-    DataCollatorWithPadding
+    DataCollatorWithPadding,
 )
 
 def train(args):
@@ -40,7 +42,14 @@ def train(args):
     config.num_labels = 3
 
     print('\nLoad Model')
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
+
+    if args.model_type == 'base' :
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
+    else :
+        model_type_str = 'models.' + args.model_type
+        model_lib = importlib.import_module(model_type_str)
+        model_class = getattr(model_lib, 'RobertaForSequenceClassification')
+        model = model_class.from_pretrained(MODEL_NAME, config=config).to(device)
 
     # -- Tokenizing Dataset
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -89,7 +98,14 @@ def train(args):
     )
 
     # -- Collator
-    collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
+    if args.model_type == 'mlm' :
+        collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
+            max_length=args.max_len, 
+            mlm=True, 
+            mlm_probability=0.1
+        )
+    else :
+        collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
     # -- Trainer
     trainer = Trainer(
@@ -137,6 +153,7 @@ if __name__ == '__main__':
 
     # -- plm
     parser.add_argument('--PLM', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
+    parser.add_argument('--model_type', type=str, default='base', help='custom model type (default: base)')
 
     # -- training arguments
     parser.add_argument('--lr', type=float, default=2e-5, help='learning rate (default: 2e-5)')

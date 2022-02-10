@@ -10,7 +10,7 @@ from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel,
 class ClassificationHead(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.dense = nn.Linear(config.hidden_size*3, config.hidden_size)
         classifier_dropout = (
             config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         )
@@ -49,7 +49,6 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
         output_hidden_states=None,
         return_dict=None,
     ):
-
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         outputs = self.roberta(
@@ -65,11 +64,11 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
         )
         hidden_states = outputs[1]
 
-        cls_output = hidden_states[-1][:,0] * 0.6
-        midterm_output1 = hidden_states[-2][:,0] * 0.3
-        midterm_output2 = hidden_states[-3][:,0] * 0.1
+        cls_output = hidden_states[-1][:,0]
+        midterm_output1 = hidden_states[-2][:,0]
+        midterm_output2 = hidden_states[-3][:,0]
         
-        pooled_output = cls_output + midterm_output1 + midterm_output2
+        pooled_output = torch.cat([cls_output, midterm_output1, midterm_output2], dim=1)
         logits = self.classifier(pooled_output)
 
         loss = None
@@ -88,3 +87,4 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
