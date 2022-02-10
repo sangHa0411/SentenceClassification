@@ -63,6 +63,7 @@ def train(args):
     # -- Collator
     collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
+    gap = int(len(dset) / args.k_fold)
     WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
     for i in range(args.k_fold) :
 
@@ -78,12 +79,7 @@ def train(args):
         wandb.init(entity="sangha0411", project="daycon - NLU", name=wandb_name, group='TRAIN')
         wandb.config.update(args)
 
-        gap = int(len(dset) / args.k_fold)
-        ids = list(range(len(dset)))
-        del_ids = list(range(i*gap, (i+1)*gap))
-
-        training_ids = set(ids) - set(del_ids)
-        training_ids = list(training_ids)
+        training_ids = list(range(i*gap, (i+1)*gap))
         training_dset = dset.select(training_ids)
 
         # -- Training Argument
