@@ -10,16 +10,17 @@ from transformers.models.roberta.modeling_roberta import (RobertaPreTrainedModel
 
 class RobertaForSequenceClassification(RobertaPreTrainedModel):
     _keys_to_ignore_on_load_missing = [r"position_ids"]
-    def __init__(self, config):
+    def __init__(self, model_name, config):
         super().__init__(config)
         self.num_labels = config.num_labels
         self.config = config
         
         de_config = copy.deepcopy(config)
+        de_config.add_cross_attention = True
         de_config.is_decoder = True
 
-        self.en_model = RobertaModel(config, add_pooling_layer=False)
-        self.de_model = RobertaModel(de_config, add_pooling_layer=False)
+        self.en_model = RobertaModel.from_pretrained(model_name, config=config)
+        self.de_model = RobertaModel.from_pretrained(model_name, config=de_config)
         self.classifier = RobertaClassificationHead(config)
 
     def forward(

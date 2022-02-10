@@ -48,8 +48,9 @@ def train(args):
         model_type_str = 'models.' + args.model_type
         model_lib = importlib.import_module(model_type_str)
         model_class = getattr(model_lib, 'RobertaForSequenceClassification')
-        model = model_class.from_pretrained(MODEL_NAME, config=config).to(device)
-
+        model = model_class(MODEL_NAME, config) if args.model_type == 'seq2seq' else model_class.from_pretrained(MODEL_NAME, config=config)
+        model = model.to(device)
+        
     # -- Tokenizing Dataset
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
