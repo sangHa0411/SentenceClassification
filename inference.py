@@ -1,6 +1,7 @@
 
 import torch
 import argparse
+import importlib
 import pandas as pd
 import numpy as np
 
@@ -58,8 +59,15 @@ def inference(args):
     # -- Config & Model
     print('\nLoad Model')
     config =  AutoConfig.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
-
+    if args.model_type == 'base' :
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config)
+    else :
+        model_type_str = 'models.' + args.model_type
+        model_lib = importlib.import_module(model_type_str)
+        model_class = getattr(model_lib, 'RobertaForSequenceClassification')
+        model = model_class(MODEL_NAME, config) if args.model_type == 'seq2seq' else model_class.from_pretrained(MODEL_NAME, config=config)
+    model = model.to(device)
+    
     # -- Collator
     collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
@@ -98,6 +106,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_len', type=int, default=128, help='input max length')
 
     # -- Model
+    parser.add_argument('--model_type', type=str, default='base', help='custom model type (default: base)')
     parser.add_argument('--PLM', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
     parser.add_argument('--tokenizer', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
     
