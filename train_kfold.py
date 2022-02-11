@@ -3,12 +3,14 @@ import wandb
 import torch
 import random
 import argparse
+import importlib
 import numpy as np
 from datasets import concatenate_datasets
 
 from utils.loader import Loader
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
+from utils.collator import DataCollatorForMaskPadding
 from utils.preprocessor import Preprocessor
 
 from dotenv import load_dotenv
@@ -60,32 +62,54 @@ def train(args):
     dset = dset.map(convertor, batched=True, remove_columns=dset.column_names)
     print(dset)
 
-    # -- Collator
-    collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
+  # -- Collator
+    if args.model_type == 'mlm' :
+        collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
+            max_length=args.max_len, 
+            mlm=True, 
+            mlm_probability=0.1
+        )
+    else :
+        collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
     gap = int(len(dset) / args.k_fold)
     WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
     for i in range(args.k_fold) :
 
         print('\nLoad Model')
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
-
+        if args.model_type == 'base' :
+            model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
+        else :
+            model_type_str = 'models.' + args.model_type
+            model_lib = importlib.import_module(model_type_str)
+            model_class = getattr(model_lib, 'RobertaForSequenceClassification')
+            model = model_class(MODEL_NAME, config) if args.model_type == 'seq2seq' else model_class.from_pretrained(MODEL_NAME, config=config)
+            model = model.to(device)
+        
         print('\n%dth Training' %(i+1))    
         wandb.login(key=WANDB_AUTH_KEY)
         wandb_name = args.log_name + '_' + str(i+1)
+        group_name = args.model_type + '_' + str(args.k_fold) + 'fold' 
         output_dir = args.output_dir + '_' + str(i+1)
         logging_dir = args.logging_dir + '_' + str(i+1)
 
-        wandb.init(entity="sangha0411", project="daycon - NLU", name=wandb_name, group='TRAIN')
+        wandb.init(entity="sangha0411", project="dacon - NLU", name=wandb_name, group=group_name)
         wandb.config.update(args)
 
-        training_ids = list(range(i*gap, (i+1)*gap))
-        training_dset = dset.select(training_ids)
+        if args.k_fold == 1 :
+            training_ids = list(range(i*gap, (i+1)*gap))
+            training_dset = dset.select(training_ids)
+        else :
+            total_size = len(dset)
+            total_ids = list(range(total_size))
+            del_ids = list(range(i*gap, (i+1)*gap))
+            training_ids = set(total_ids) - set(del_ids)
+            training_dset = dset.select(list(training_ids))
 
         # -- Training Argument
         training_args = TrainingArguments(
             output_dir=output_dir,                              # output directory
-            save_total_limit=5,                                 # number of total save model.
+            save_total_limit=3,                                 # number of total save model.
             save_steps=args.save_steps,                         # model saving step.
             num_train_epochs=args.epochs,                       # total number of training epochs
             learning_rate=args.lr,                              # learning_rate
@@ -136,6 +160,7 @@ if __name__ == '__main__':
 
     # -- plm
     parser.add_argument('--PLM', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
+    parser.add_argument('--model_type', default='base', help='custom model type')
 
     # -- training arguments
     parser.add_argument('--lr', type=float, default=2e-5, help='learning rate (default: 2e-5)')
@@ -148,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_len', type=int, default=128, help='max input sequence length (default: 128)')
 
     # -- save & log
-    parser.add_argument('--save_steps', type=int, default=300, help='model save steps')
+    parser.add_argument('--save_steps', type=int, default=500, help='model save steps')
     parser.add_argument('--logging_steps', type=int, default=100, help='training log steps')
 
     # -- Seed
