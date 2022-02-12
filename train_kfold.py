@@ -109,6 +109,7 @@ def train(args):
         # -- Training Argument
         training_args = TrainingArguments(
             output_dir=output_dir,                              # output directory
+            overwrite_output_dir=True,                          # overwrite output directory
             save_total_limit=3,                                 # number of total save model.
             save_steps=args.save_steps,                         # model saving step.
             num_train_epochs=args.epochs,                       # total number of training epochs

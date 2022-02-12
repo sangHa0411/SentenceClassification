@@ -26,7 +26,7 @@ def train(args):
     # -- Checkpoint 
     MODEL_NAME = args.PLM
     print('Model : %s' %MODEL_NAME)
-    
+
     # -- Loading Dataset
     print('\nLoad Dataset')
     loader = Loader('./data/train_data.csv', './data/dev_data.csv')
@@ -80,6 +80,7 @@ def train(args):
     # -- Training Argument
     training_args = TrainingArguments(
         output_dir=args.output_dir,                         # output directory
+        overwrite_output_dir=True,                          # overwrite output directory
         save_total_limit=5,                                 # number of total save model.
         save_steps=args.save_steps,                         # model saving step.
         num_train_epochs=args.epochs,                       # total number of training epochs
