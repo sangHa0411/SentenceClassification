@@ -30,8 +30,8 @@ def train(args):
 
     # -- Loading Dataset
     print('\nLoad Dataset')
-    loader = Loader('./data/train_data.csv', './data/dev_data.csv', )
-    train_dset, validation_dset, test_dset = loader.get_data()
+    loader = Loader('./data/train_data.csv', './data/dev_data.csv')
+    train_dset, validation_dset = loader.get_data()
     dset = concatenate_datasets([train_dset, validation_dset]).shuffle(seed=args.seed)
 
     test_path = './data/test_data.csv'
@@ -70,7 +70,7 @@ def train(args):
     dset = dset.map(convertor.encode4train, batched=True, remove_columns=dset.column_names)
     test_dset = test_dset.map(convertor.encode4test, batched=True, remove_columns=test_dset.column_names)
     
-    kfold_resutls = []
+    predictions_resutls = []
     # -- Collator
     if args.model_type == 'mlm' :
         train_collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
@@ -133,7 +133,7 @@ def train(args):
             report_to='wandb'
         )
 
-        # -- Trainer
+        # -- Trainer for train dataset
         trainer = Trainer(
             model=model,                         # the instantiated 🤗 Transformers model to be trained
             args=training_args,                  # training arguments, defined above
@@ -145,21 +145,21 @@ def train(args):
         print('Training Strats')
         trainer.train()
 
-        wandb.finish()
-
+        # -- Trainer for test dataset
         test_trainer = Trainer(model=model, data_collator=test_collator)
         results = test_trainer.predict(test_dataset=test_dset)
         predictions = results.predictions
-        kfold_resutls.append(predictions)
+        predictions_resutls.append(predictions)
 
-    kfold_resutls = np.sum(kfold_resutls)
-    labels = np.argmax(kfold_resutls, axis=1)
+        wandb.finish()
+
+    predictions = np.sum(predictions_resutls, axis=0)
+    labels = np.argmax(predictions, axis=1)
     labels = [ids2label[v] for v in labels]
 
     test_df['label'] = labels
     test_df = test_df.drop(columns=['premise', 'hypothesis'])
     test_df.to_csv(args.output_file, index=False)
-
 
 def main(args):
     load_dotenv(dotenv_path=args.dotenv_path)
@@ -179,8 +179,9 @@ if __name__ == '__main__':
 
     # -- directory
     parser.add_argument('--output_dir', default='./exp', help='trained model output directory')
+    parser.add_argument('--output_file', default='./results.csv', help='k fold results csv file')
     parser.add_argument('--logging_dir', default='./logs', help='logging directory')
-    
+
     # -- wandb
     parser.add_argument('--log_name', default='klue/roberta-large', help='wandb logging name')
 
@@ -193,7 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train (default: 5)')
     parser.add_argument('--train_batch_size', type=int, default=32, help='train batch size (default: 32)')
     parser.add_argument('--weight_decay', type=float, default=1e-3, help='strength of weight decay (default: 1e-3)')
-    parser.add_argument('--warmup_steps', type=int, default=500, help='number of warmup steps for learning rate scheduler (default: 500)')
+    parser.add_argument('--warmup_steps', type=int, default=200, help='number of warmup steps for learning rate scheduler (default: 200)')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='gradient_accumulation_steps (default: 1)')
     parser.add_argument('--k_fold', type=int, default=5, help='k fold size (default: 5)')
     parser.add_argument('--max_len', type=int, default=128, help='max input sequence length (default: 128)')
