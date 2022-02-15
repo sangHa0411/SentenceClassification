@@ -3,7 +3,7 @@ class Preprocessor :
     def __init__(self, label_dict) :
         self.label_dict = label_dict
 
-    def __call__(self, dataset) :
+    def preprocess4train(self, dataset) :
         inputs = []
         labels = []
 
@@ -19,4 +19,13 @@ class Preprocessor :
 
         dataset['inputs'] = inputs
         dataset['labels'] = labels
+        return dataset
+
+    def preprocess4test(self, dataset) :
+        inputs = []
+        size = len(dataset['index'])
+        for i in range(size) :
+            data = dataset['premise'][i] + ' [SEP] ' + dataset['hypothesis'][i]
+            inputs.append(data)
+        dataset['inputs'] = inputs
         return dataset

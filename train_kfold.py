@@ -4,8 +4,9 @@ import torch
 import random
 import argparse
 import importlib
+import pandas as pd
 import numpy as np
-from datasets import concatenate_datasets
+from datasets import Dataset, concatenate_datasets
 
 from utils.loader import Loader
 from utils.optimizer import Optimizer
@@ -26,12 +27,16 @@ def train(args):
     # -- Checkpoint 
     MODEL_NAME = args.PLM
     print('Model : %s' %MODEL_NAME)
-    
+
     # -- Loading Dataset
     print('\nLoad Dataset')
-    loader = Loader('./data/train_data.csv', './data/dev_data.csv')
-    train_dset, validation_dset = loader.get_data()
+    loader = Loader('./data/train_data.csv', './data/dev_data.csv', )
+    train_dset, validation_dset, test_dset = loader.get_data()
     dset = concatenate_datasets([train_dset, validation_dset]).shuffle(seed=args.seed)
+
+    test_path = './data/test_data.csv'
+    test_df = pd.read_csv(test_path)
+    test_dset = Dataset.from_pandas(test_df)
     
     # -- Device
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -51,26 +56,31 @@ def train(args):
 
     # -- Preprocessing Dataset
     print('\nPreprocess Dataset')
-    label_dict = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
-    preprocessor = Preprocessor(label_dict=label_dict)
-    dset = dset.map(preprocessor, batched=True)
+    label2ids = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
+    ids2label = {v:k for k,v in label2ids.items()}
+
+    preprocessor = Preprocessor(label_dict=label2ids)
+    dset = dset.map(preprocessor.preprocess4train, batched=True)
+    test_dset = test_dset.map(preprocessor.preprocess4test, batched=True)
 
     print('\nEncoding Dataset')
     convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len)
 
     print('Training Dataset')
-    dset = dset.map(convertor, batched=True, remove_columns=dset.column_names)
-    print(dset)
-
-  # -- Collator
+    dset = dset.map(convertor.encode4train, batched=True, remove_columns=dset.column_names)
+    test_dset = test_dset.map(convertor.encode4test, batched=True, remove_columns=test_dset.column_names)
+    
+    kfold_resutls = []
+    # -- Collator
     if args.model_type == 'mlm' :
-        collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
+        train_collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
             max_length=args.max_len, 
             mlm=True, 
-            mlm_probability=0.1
+            mlm_probability=0.15
         )
     else :
-        collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
+        train_collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
+    test_collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
     gap = int(len(dset) / args.k_fold)
     WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
@@ -78,13 +88,13 @@ def train(args):
 
         print('\nLoad Model')
         if args.model_type == 'base' :
-            model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config).to(device)
+            model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=config)
         else :
             model_type_str = 'models.' + args.model_type
             model_lib = importlib.import_module(model_type_str)
             model_class = getattr(model_lib, 'RobertaForSequenceClassification')
-            model = model_class(MODEL_NAME, config) if args.model_type == 'seq2seq' else model_class.from_pretrained(MODEL_NAME, config=config)
-            model = model.to(device)
+            model = model_class.from_pretrained(MODEL_NAME, config=config)
+        model = model.to(device)
         
         print('\n%dth Training' %(i+1))    
         wandb.login(key=WANDB_AUTH_KEY)
@@ -128,13 +138,28 @@ def train(args):
             model=model,                         # the instantiated 🤗 Transformers model to be trained
             args=training_args,                  # training arguments, defined above
             train_dataset=training_dset,         # training dataset
-            data_collator=collator,              # collator
+            data_collator=train_collator,        # collator
         )
 
         # -- Training
         print('Training Strats')
         trainer.train()
+
         wandb.finish()
+
+        test_trainer = Trainer(model=model, data_collator=test_collator)
+        results = test_trainer.predict(test_dataset=test_dset)
+        predictions = results.predictions
+        kfold_resutls.append(predictions)
+
+    kfold_resutls = np.sum(kfold_resutls)
+    labels = np.argmax(kfold_resutls, axis=1)
+    labels = [ids2label[v] for v in labels]
+
+    test_df['label'] = labels
+    test_df = test_df.drop(columns=['premise', 'hypothesis'])
+    test_df.to_csv(args.output_file, index=False)
+
 
 def main(args):
     load_dotenv(dotenv_path=args.dotenv_path)

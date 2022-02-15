@@ -31,7 +31,6 @@ class DataCollatorForMaskPadding(DataCollatorForLanguageModeling):
             )
         return batch
 
-
     def torch_mask_tokens(self, inputs, special_tokens_mask):
         """
         Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original.

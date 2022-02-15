@@ -64,17 +64,17 @@ def train(args):
     print('\nPreprocess Dataset')
     label_dict = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
     preprocessor = Preprocessor(label_dict=label_dict)
-    train_dset = train_dset.map(preprocessor, batched=True)
-    validation_dset = validation_dset.map(preprocessor, batched=True)
+    train_dset = train_dset.map(preprocessor.preprocess4train, batched=True)
+    validation_dset = validation_dset.map(preprocessor.preprocess4train, batched=True)
    
     print('\nEncoding Dataset')
     convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len)
 
     print('Trainin Dataset')
-    train_dset = train_dset.map(convertor, batched=True, remove_columns=train_dset.column_names)
+    train_dset = train_dset.map(convertor.encode4train, batched=True, remove_columns=train_dset.column_names)
     print(train_dset)
     print('Validation Dataset')
-    validation_dset = validation_dset.map(convertor, batched=True, remove_columns=validation_dset.column_names)
+    validation_dset = validation_dset.map(convertor.encode4train, batched=True, remove_columns=validation_dset.column_names)
     print(validation_dset)
 
     # -- Training Argument
@@ -103,7 +103,7 @@ def train(args):
         collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
             max_length=args.max_len, 
             mlm=True, 
-            mlm_probability=0.1
+            mlm_probability=0.15
         )
     else :
         collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
