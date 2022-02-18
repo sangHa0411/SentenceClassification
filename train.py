@@ -6,7 +6,7 @@ import argparse
 import importlib
 import numpy as np
 
-from utils.loader import Loader
+from datasets import load_dataset
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
 from utils.preprocessor import Preprocessor
@@ -29,8 +29,8 @@ def train(args):
 
     # -- Loading Dataset
     print('\nLoad Dataset')
-    loader = Loader('./data/train_data.csv', './data/dev_data.csv')
-    train_dset, validation_dset = loader.get_data()
+    dset = load_dataset('sh110495/klue-nli')
+    train_dset, validation_dset = dset['train'], dset['validation']
     train_dset = train_dset.shuffle(seed=args.seed)
     validation_dset = validation_dset.shuffle(seed=args.seed)
     

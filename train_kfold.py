@@ -7,7 +7,7 @@ import importlib
 import numpy as np
 from datasets import concatenate_datasets
 
-from utils.loader import Loader
+from datasets import load_dataset
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
 from utils.collator import DataCollatorForMaskPadding
@@ -30,8 +30,8 @@ def train(args):
 
     # -- Loading Dataset
     print('\nLoad Dataset')
-    loader = Loader('./data/train_data.csv', './data/dev_data.csv')
-    train_dset, validation_dset = loader.get_data()
+    dset = load_dataset('sh110495/klue-nli')
+    train_dset, validation_dset = dset['train'], dset['validation']
     dset = concatenate_datasets([train_dset, validation_dset]).shuffle(seed=args.seed)
 
     # -- Device
@@ -142,7 +142,6 @@ def train(args):
         trainer.train()
         wandb.finish()
 
-
 def main(args):
     load_dotenv(dotenv_path=args.dotenv_path)
     train(args)
@@ -176,7 +175,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train (default: 5)')
     parser.add_argument('--train_batch_size', type=int, default=32, help='train batch size (default: 32)')
     parser.add_argument('--weight_decay', type=float, default=1e-3, help='strength of weight decay (default: 1e-3)')
-    parser.add_argument('--warmup_steps', type=int, default=200, help='number of warmup steps for learning rate scheduler (default: 200)')
+    parser.add_argument('--warmup_steps', type=int, default=300, help='number of warmup steps for learning rate scheduler (default: 300)')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='gradient_accumulation_steps (default: 1)')
     parser.add_argument('--k_fold', type=int, default=5, help='k fold size (default: 5)')
     parser.add_argument('--max_len', type=int, default=128, help='max input sequence length (default: 128)')
@@ -187,9 +186,9 @@ if __name__ == '__main__':
     parser.add_argument('--evaluation_strategy', type=str, default='steps', help='evaluation strategy to adopt during training, steps or epoch (default: steps)')
     
     # -- save & log
-    parser.add_argument('--save_steps', type=int, default=300, help='model save steps')
+    parser.add_argument('--save_steps', type=int, default=500, help='model save steps')
     parser.add_argument('--logging_steps', type=int, default=100, help='training log steps')
-    parser.add_argument('--eval_steps', type=int, default=300, help='evaluation steps')
+    parser.add_argument('--eval_steps', type=int, default=500, help='evaluation steps')
 
     # -- Seed
     parser.add_argument('--seed', type=int, default=42, help='random seed (default: 42)')
