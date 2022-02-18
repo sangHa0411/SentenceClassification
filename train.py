@@ -127,8 +127,9 @@ def main(args):
     WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
     wandb.login(key=WANDB_AUTH_KEY)
 
+    group_name = args.model_type
     wandb_name = args.log_name
-    wandb.init(entity="sangha0411", project="daycon - NLU", name=wandb_name, group='TRAIN')
+    wandb.init(entity="sangha0411", project="dacon - NLU", name=wandb_name, group=group_name)
     wandb.config.update(args)
     train(args)
     wandb.finish()
