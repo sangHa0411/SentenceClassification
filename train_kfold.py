@@ -4,15 +4,15 @@ import torch
 import random
 import argparse
 import importlib
-import pandas as pd
 import numpy as np
-from datasets import Dataset, concatenate_datasets
+from datasets import concatenate_datasets
 
 from utils.loader import Loader
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
 from utils.collator import DataCollatorForMaskPadding
 from utils.preprocessor import Preprocessor
+from utils.metrics import compute_metrics
 
 from dotenv import load_dotenv
 from transformers import (AutoTokenizer, 
@@ -34,10 +34,6 @@ def train(args):
     train_dset, validation_dset = loader.get_data()
     dset = concatenate_datasets([train_dset, validation_dset]).shuffle(seed=args.seed)
 
-    test_path = './data/test_data.csv'
-    test_df = pd.read_csv(test_path)
-    test_dset = Dataset.from_pandas(test_df)
-    
     # -- Device
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -57,30 +53,24 @@ def train(args):
     # -- Preprocessing Dataset
     print('\nPreprocess Dataset')
     label2ids = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
-    ids2label = {v:k for k,v in label2ids.items()}
-
     preprocessor = Preprocessor(label_dict=label2ids)
-    dset = dset.map(preprocessor.preprocess4train, batched=True)
-    test_dset = test_dset.map(preprocessor.preprocess4test, batched=True)
+    dset = dset.map(preprocessor, batched=True)
 
     print('\nEncoding Dataset')
     convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len)
 
     print('Training Dataset')
-    dset = dset.map(convertor.encode4train, batched=True, remove_columns=dset.column_names)
-    test_dset = test_dset.map(convertor.encode4test, batched=True, remove_columns=test_dset.column_names)
+    dset = dset.map(convertor, batched=True, remove_columns=dset.column_names)
     
-    predictions_resutls = []
     # -- Collator
     if args.model_type == 'mlm' :
-        train_collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
+        data_collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
             max_length=args.max_len, 
             mlm=True, 
             mlm_probability=0.15
         )
     else :
-        train_collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
-    test_collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
+        data_collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
     gap = int(len(dset) / args.k_fold)
     WANDB_AUTH_KEY = os.getenv('WANDB_AUTH_KEY')
@@ -106,15 +96,14 @@ def train(args):
         wandb.init(entity="sangha0411", project="dacon - NLU", name=wandb_name, group=group_name)
         wandb.config.update(args)
 
-        if args.k_fold == 1 :
-            training_ids = list(range(i*gap, (i+1)*gap))
-            training_dset = dset.select(training_ids)
-        else :
-            total_size = len(dset)
-            total_ids = list(range(total_size))
-            del_ids = list(range(i*gap, (i+1)*gap))
-            training_ids = set(total_ids) - set(del_ids)
-            training_dset = dset.select(list(training_ids))
+        total_size = len(dset)
+        total_ids = list(range(total_size))
+        del_ids = list(range(i*gap, (i+1)*gap))
+        training_ids = set(total_ids) - set(del_ids)
+
+        # -- Training Dataset
+        training_dset = dset.select(list(training_ids))
+        eval_dset = dset.select(del_ids)
 
         # -- Training Argument
         training_args = TrainingArguments(
@@ -125,41 +114,34 @@ def train(args):
             num_train_epochs=args.epochs,                       # total number of training epochs
             learning_rate=args.lr,                              # learning_rate
             per_device_train_batch_size=args.train_batch_size,  # batch size per device during training
+            per_device_eval_batch_size=args.eval_batch_size,    # batch size for evaluation
             warmup_steps=args.warmup_steps,                     # number of warmup steps for learning rate scheduler
             weight_decay=args.weight_decay,                     # strength of weight decay
             logging_dir=logging_dir,                            # directory for storing logs
             logging_steps=args.logging_steps,                   # log saving step.
+            evaluation_strategy=args.evaluation_strategy,       # evaluation strategy to adopt during training
+            eval_steps=args.eval_steps,                         # evaluation step.
             gradient_accumulation_steps=args.gradient_accumulation_steps,
+            load_best_model_at_end = True,
             report_to='wandb'
         )
 
-        # -- Trainer for train dataset
+        # -- Trainer
         trainer = Trainer(
             model=model,                         # the instantiated 🤗 Transformers model to be trained
             args=training_args,                  # training arguments, defined above
             train_dataset=training_dset,         # training dataset
-            data_collator=train_collator,        # collator
+            eval_dataset=eval_dset,              # evaluation dataset
+            data_collator=data_collator,         # collator
+            compute_metrics=compute_metrics      # define metrics function
         )
+
 
         # -- Training
         print('Training Strats')
         trainer.train()
-
-        # -- Trainer for test dataset
-        test_trainer = Trainer(model=model, data_collator=test_collator)
-        results = test_trainer.predict(test_dataset=test_dset)
-        predictions = results.predictions
-        predictions_resutls.append(predictions)
-
         wandb.finish()
 
-    predictions = np.sum(predictions_resutls, axis=0)
-    labels = np.argmax(predictions, axis=1)
-    labels = [ids2label[v] for v in labels]
-
-    test_df['label'] = labels
-    test_df = test_df.drop(columns=['premise', 'hypothesis'])
-    test_df.to_csv(args.output_file, index=False)
 
 def main(args):
     load_dotenv(dotenv_path=args.dotenv_path)
@@ -199,9 +181,15 @@ if __name__ == '__main__':
     parser.add_argument('--k_fold', type=int, default=5, help='k fold size (default: 5)')
     parser.add_argument('--max_len', type=int, default=128, help='max input sequence length (default: 128)')
 
+    # -- validation arguments
+    parser.add_argument('--eval_batch_size', type=int, default=16, help='eval batch size (default: 16)')
+    parser.add_argument('--max_len', type=int, default=128, help='max length of tensor (default: 128)')
+    parser.add_argument('--evaluation_strategy', type=str, default='steps', help='evaluation strategy to adopt during training, steps or epoch (default: steps)')
+    
     # -- save & log
-    parser.add_argument('--save_steps', type=int, default=500, help='model save steps')
+    parser.add_argument('--save_steps', type=int, default=300, help='model save steps')
     parser.add_argument('--logging_steps', type=int, default=100, help='training log steps')
+    parser.add_argument('--eval_steps', type=int, default=300, help='evaluation steps')
 
     # -- Seed
     parser.add_argument('--seed', type=int, default=42, help='random seed (default: 42)')
