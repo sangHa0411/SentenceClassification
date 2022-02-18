@@ -5,9 +5,8 @@ import random
 import argparse
 import importlib
 import numpy as np
-from datasets import concatenate_datasets
 
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
 from utils.collator import DataCollatorForMaskPadding
