@@ -9,7 +9,7 @@ import numpy as np
 from datasets import load_dataset, concatenate_datasets
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
-from utils.collator import DataCollatorForMaskPadding
+from utils.collator import DataCollatorForMaskPadding, DataCollatorForSeq2Seq
 from utils.preprocessor import Preprocessor
 from utils.metrics import compute_metrics
 
@@ -52,11 +52,11 @@ def train(args):
     # -- Preprocessing Dataset
     print('\nPreprocess Dataset')
     label2ids = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
-    preprocessor = Preprocessor(label_dict=label2ids)
+    preprocessor = Preprocessor(label_dict=label2ids, model_type=args.model_type)
     dset = dset.map(preprocessor, batched=True)
 
     print('\nEncoding Dataset')
-    convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len)
+    convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len, model_type=args.model_type)
 
     print('Training Dataset')
     dset = dset.map(convertor, batched=True, remove_columns=dset.column_names)
@@ -68,6 +68,8 @@ def train(args):
             mlm=True, 
             mlm_probability=0.15
         )
+    elif args.model_type == 'seq2seq' :
+        data_collator = DataCollatorForSeq2Seq(tokenizer, max_length=args.max_len)
     else :
         data_collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
@@ -82,7 +84,7 @@ def train(args):
             model_type_str = 'models.' + args.model_type
             model_lib = importlib.import_module(model_type_str)
             model_class = getattr(model_lib, 'RobertaForSequenceClassification')
-            model = model_class.from_pretrained(MODEL_NAME, config=config)
+            model = model_class.from_pretrained(MODEL_NAME, config=config) if args.model_type == 'seq2sqe' else model_class(MODEL_NAME, config=config)
         model = model.to(device)
         
         print('\n%dth Training' %(i+1))    

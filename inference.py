@@ -1,17 +1,48 @@
-
+import os
 import torch
 import argparse
 import importlib
 import pandas as pd
 import numpy as np
-
+from functools import partial
 from datasets import Dataset
+from utils.collator import DataCollatorForSeq2Seq
 from transformers import (AutoTokenizer, 
     AutoConfig, 
     AutoModelForSequenceClassification, 
     Trainer, 
     DataCollatorWithPadding
 )
+
+def preprocess(dataset, model_type) :
+    if model_type == 'seq2seq' :
+        inputs = []
+        decoder_inputs = []
+        size = len(dataset['index'])
+        for i in range(size) :
+            inputs.append(dataset['premise'][i])
+            decoder_inputs.append(dataset['hypothesis'][i])
+        dataset['inputs'] = inputs
+        dataset['decoder_inputs'] = decoder_inputs
+        return dataset
+    else :
+        inputs = []
+        size = len(dataset['index'])
+        for i in range(size) :
+            data = dataset['premise'][i] + ' [SEP] ' + dataset['hypothesis'][i]
+            inputs.append(data)
+        dataset['inputs'] = inputs
+        return dataset
+
+def convert(examples, tokenizer, max_len, model_type) :
+    inputs = examples['inputs']
+    model_inputs=tokenizer(inputs, max_length=max_len, truncation=True)
+
+    if model_type == 'seq2seq' :
+        with tokenizer.as_target_tokenizer():
+            target_inputs = tokenizer(examples["decoder_inputs"], max_length=max_len, return_token_type_ids=False, truncation=True)
+        model_inputs['decoder_input_ids'] = target_inputs['input_ids']
+    return model_inputs
 
 def inference(args):
     # -- Checkpoint 
@@ -30,23 +61,13 @@ def inference(args):
 
     # -- Preprocessing Dataset
     print('\nPreprocessing Dataset')
-    def preprocess(dataset) :
-        inputs = []
-        size = len(dataset['index'])
-        for i in range(size) :
-            data = dataset['premise'][i] + ' [SEP] ' + dataset['hypothesis'][i]
-            inputs.append(data)
-        dataset['inputs'] = inputs
-        return dataset
-    test_dset = test_dset.map(preprocess, batched=True)
+    preprocess_fn = partial(preprocess, model_type=args.model_type)
+    test_dset = test_dset.map(preprocess_fn, batched=True)
 
     # -- Converting Dataset
     print('\nConverting Dataset')
-    def convert(examples, tokenizer, max_len) :
-        inputs = examples['inputs']
-        model_inputs=tokenizer(inputs, max_length=max_len, truncation=True)
-        return model_inputs
-    test_dset = test_dset.map(lambda x : convert(x, tokenizer=tokenizer, max_len=args.max_len), 
+    convert_fn = partial(convert, tokenizer=tokenizer, max_len=args.max_len, model_type=args.model_type)
+    test_dset = test_dset.map(convert_fn, 
         batched=True, 
         remove_columns=test_dset.column_names
     )
@@ -65,11 +86,23 @@ def inference(args):
         model_type_str = 'models.' + args.model_type
         model_lib = importlib.import_module(model_type_str)
         model_class = getattr(model_lib, 'RobertaForSequenceClassification')
-        model = model_class.from_pretrained(MODEL_NAME, config=config)
+
+        if args.model_type == 'seq2seq' :
+            model_size = 'klue/roberta-large' if args.model_size == 'large' else 'klue/roberta-base'
+            model = model_class(model_size, config=config)
+            model_parameters = os.path.join(MODEL_NAME, 'pytorch_model.bin')
+            model.load_state_dict(torch.load(model_parameters)) # load model parameter
+        else :
+            model = model_class.from_pretrained(MODEL_NAME, config=config) 
+
+    # -- Setting Device 
     model = model.to(device)
     
     # -- Collator
-    collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
+    if args.model_type == 'seq2seq' :
+        collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=args.max_len)
+    else :
+        collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
     # -- Trainer
     trainer = Trainer(
@@ -106,6 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_len', type=int, default=128, help='input max length')
 
     # -- Model
+    parser.add_argument('--model_size', type=str, default='large', help='model size (default : large)')
     parser.add_argument('--model_type', type=str, default='base', help='custom model type (default: base)')
     parser.add_argument('--PLM', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
     parser.add_argument('--tokenizer', type=str, default='klue/roberta-large', help='model type (default: klue/roberta-large)')
