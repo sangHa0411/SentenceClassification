@@ -108,6 +108,7 @@ def train(args):
         training_args = TrainingArguments(
             output_dir=output_dir,                              # output directory
             overwrite_output_dir=True,                          # overwrite output directory
+            label_smoothing_factor=0.1,                         # label smoothing factor
             save_total_limit=3,                                 # number of total save model.
             save_steps=args.save_steps,                         # model saving step.
             num_train_epochs=args.epochs,                       # total number of training epochs
@@ -134,7 +135,6 @@ def train(args):
             data_collator=data_collator,         # collator
             compute_metrics=compute_metrics      # define metrics function
         )
-
 
         # -- Training
         print('Training Strats')
@@ -181,7 +181,6 @@ if __name__ == '__main__':
 
     # -- validation arguments
     parser.add_argument('--eval_batch_size', type=int, default=16, help='eval batch size (default: 16)')
-    parser.add_argument('--max_len', type=int, default=128, help='max length of tensor (default: 128)')
     parser.add_argument('--evaluation_strategy', type=str, default='steps', help='evaluation strategy to adopt during training, steps or epoch (default: steps)')
     
     # -- save & log
