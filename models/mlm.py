@@ -59,7 +59,7 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
 
             if mask_labels is not None :
                 mask_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), mask_labels.view(-1))
-                loss = 0.7 * loss + 0.3 * mask_lm_loss
+                loss = 0.8 * loss + 0.2 * mask_lm_loss
 
         if not return_dict:
             output = (logits,) + outputs[2:]
