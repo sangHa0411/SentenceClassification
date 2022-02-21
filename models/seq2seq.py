@@ -53,7 +53,7 @@ class RobertaForSequenceClassification(RobertaPreTrainedModel):
         encoder_hidden_states = encoder_outputs[0]
 
         outputs = self.de_model(
-            decoder_input_ids,
+            input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             head_mask=head_mask,

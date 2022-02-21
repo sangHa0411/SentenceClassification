@@ -10,7 +10,7 @@ from datasets import load_dataset
 from utils.optimizer import Optimizer
 from utils.tokenizer import Tokenizer
 from utils.preprocessor import Preprocessor
-from utils.collator import DataCollatorForMaskPadding, DataCollatorForSeq2Seq
+from utils.collator import DataCollatorForMaskPadding
 from utils.metrics import compute_metrics
 
 from dotenv import load_dotenv
@@ -63,12 +63,12 @@ def train(args):
     # -- Preprocessing Dataset
     print('\nPreprocess Dataset')
     label_dict = {'contradiction' : 0, 'entailment' : 1, 'neutral' : 2}
-    preprocessor = Preprocessor(label_dict=label_dict, model_type=args.model_type)
+    preprocessor = Preprocessor(label_dict=label_dict)
     train_dset = train_dset.map(preprocessor, batched=True)
     validation_dset = validation_dset.map(preprocessor, batched=True)
    
     print('\nEncoding Dataset')
-    convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len, model_type=args.model_type)
+    convertor = Tokenizer(tokenizer=tokenizer, max_input_length=args.max_len)
 
     print('Trainin Dataset')
     train_dset = train_dset.map(convertor, batched=True, remove_columns=train_dset.column_names)
@@ -105,8 +105,6 @@ def train(args):
             mlm=True, 
             mlm_probability=0.15
         )
-    elif args.model_type == 'seq2seq' :
-        collator = DataCollatorForSeq2Seq(tokenizer, max_length=args.max_len)
     else :
         collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
