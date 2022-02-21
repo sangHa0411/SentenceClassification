@@ -2,7 +2,6 @@
 import datasets
 from transformers import data
 
-
 class Preprocessor :
     def __init__(self, label_dict, model_type) :
         self.label_dict = label_dict
@@ -23,7 +22,7 @@ class Preprocessor :
 
                 inputs.append(premise)
                 decoder_inputs.append(hypothesis)
-                labels.append(label)
+                labels.append(self.label_dict[label])
             
             dataset['inputs'] = inputs
             dataset['decoder_inputs'] = decoder_inputs

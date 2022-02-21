@@ -15,7 +15,11 @@ class Tokenizer :
 
         if self.model_type == 'seq2seq' :
             with self.tokenizer.as_target_tokenizer():
-                target_inputs = self.tokenizer(examples["decoder_inputs"], max_length=self.max_input_length, return_token_type_ids=False, truncation=True)
+                target_inputs = self.tokenizer(examples["decoder_inputs"], 
+                    max_length=self.max_input_length, 
+                    return_token_type_ids=False, 
+                    truncation=True
+                )
             model_inputs['decoder_input_ids'] = target_inputs['input_ids']
 
         model_inputs['labels'] = examples['labels']

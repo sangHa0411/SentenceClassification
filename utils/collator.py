@@ -66,9 +66,6 @@ class DataCollatorForMaskPadding(DataCollatorForLanguageModeling):
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
 
-
-
-
 @dataclass
 class DataCollatorForSeq2Seq:
     tokenizer: PreTrainedTokenizerBase
@@ -78,16 +75,17 @@ class DataCollatorForSeq2Seq:
     return_tensors: str = "pt"
 
     def __call__(self, features):
-
         decoder_input_ids = [feature["decoder_input_ids"] for feature in features] if "decoder_input_ids" in features[0].keys() else None
+
+        pad_to_multiple_of = 1 if self.pad_to_multiple_of is None else self.pad_to_multiple_of
         if decoder_input_ids is not None:
             max_decoder_input_length = max(len(l) for l in decoder_input_ids)
             padding_side = self.tokenizer.padding_side
             for feature in features:
-                if max_decoder_input_length % self.pad_to_multiple_of != 0 :
-                    max_decoder_input_length = ((max_decoder_input_length // self.pad_to_multiple_of) + 1) * self.pad_to_multiple_of
+                if max_decoder_input_length % pad_to_multiple_of != 0 :
+                    max_decoder_input_length = ((max_decoder_input_length // pad_to_multiple_of) + 1) * pad_to_multiple_of
 
-                remainder = [0] * (max_decoder_input_length - len(feature["decoder_input_ids"]))
+                remainder = [self.tokenizer.pad_token_id] * (max_decoder_input_length - len(feature["decoder_input_ids"]))
                 if isinstance(feature["decoder_input_ids"], list):
                     feature["decoder_input_ids"] = (
                         feature["decoder_input_ids"] + remainder if padding_side == "right" else remainder + feature["decoder_input_ids"]

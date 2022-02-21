@@ -183,7 +183,6 @@ if __name__ == '__main__':
 
     # -- validation arguments
     parser.add_argument('--eval_batch_size', type=int, default=16, help='eval batch size (default: 16)')
-    parser.add_argument('--max_len', type=int, default=128, help='max length of tensor (default: 128)')
     parser.add_argument('--evaluation_strategy', type=str, default='steps', help='evaluation strategy to adopt during training, steps or epoch (default: steps)')
     
     # -- save & log
