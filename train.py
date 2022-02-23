@@ -81,7 +81,6 @@ def train(args):
     training_args = TrainingArguments(
         output_dir=args.output_dir,                         # output directory
         overwrite_output_dir=True,                          # overwrite output directory
-        label_smoothing_factor=0.1,                         # label smoothing factor
         save_total_limit=5,                                 # number of total save model.
         save_steps=args.save_steps,                         # model saving step.
         num_train_epochs=args.epochs,                       # total number of training epochs

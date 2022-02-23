@@ -66,7 +66,7 @@ def train(args):
         data_collator = DataCollatorForMaskPadding(tokenizer=tokenizer, 
             max_length=args.max_len, 
             mlm=True, 
-            mlm_probability=0.15
+            mlm_probability=0.10
         )
     else :
         data_collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
@@ -108,7 +108,6 @@ def train(args):
         training_args = TrainingArguments(
             output_dir=output_dir,                              # output directory
             overwrite_output_dir=True,                          # overwrite output directory
-            label_smoothing_factor=0.1,                         # label smoothing factor
             save_total_limit=3,                                 # number of total save model.
             save_steps=args.save_steps,                         # model saving step.
             num_train_epochs=args.epochs,                       # total number of training epochs
@@ -174,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train (default: 5)')
     parser.add_argument('--train_batch_size', type=int, default=32, help='train batch size (default: 32)')
     parser.add_argument('--weight_decay', type=float, default=1e-3, help='strength of weight decay (default: 1e-3)')
-    parser.add_argument('--warmup_steps', type=int, default=300, help='number of warmup steps for learning rate scheduler (default: 300)')
+    parser.add_argument('--warmup_steps', type=int, default=200, help='number of warmup steps for learning rate scheduler (default: 200)')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='gradient_accumulation_steps (default: 1)')
     parser.add_argument('--k_fold', type=int, default=5, help='k fold size (default: 5)')
     parser.add_argument('--max_len', type=int, default=128, help='max input sequence length (default: 128)')
