@@ -6,43 +6,12 @@ import pandas as pd
 import numpy as np
 from functools import partial
 from datasets import Dataset
-from utils.collator import DataCollatorForSeq2Seq
 from transformers import (AutoTokenizer, 
     AutoConfig, 
     AutoModelForSequenceClassification, 
     Trainer, 
     DataCollatorWithPadding
 )
-
-def preprocess(dataset, model_type) :
-    if model_type == 'seq2seq' :
-        inputs = []
-        decoder_inputs = []
-        size = len(dataset['index'])
-        for i in range(size) :
-            inputs.append(dataset['premise'][i])
-            decoder_inputs.append(dataset['hypothesis'][i])
-        dataset['inputs'] = inputs
-        dataset['decoder_inputs'] = decoder_inputs
-        return dataset
-    else :
-        inputs = []
-        size = len(dataset['index'])
-        for i in range(size) :
-            data = dataset['premise'][i] + ' [SEP] ' + dataset['hypothesis'][i]
-            inputs.append(data)
-        dataset['inputs'] = inputs
-        return dataset
-
-def convert(examples, tokenizer, max_len, model_type) :
-    inputs = examples['inputs']
-    model_inputs=tokenizer(inputs, max_length=max_len, truncation=True)
-
-    if model_type == 'seq2seq' :
-        with tokenizer.as_target_tokenizer():
-            target_inputs = tokenizer(examples["decoder_inputs"], max_length=max_len, return_token_type_ids=False, truncation=True)
-        model_inputs['decoder_input_ids'] = target_inputs['input_ids']
-    return model_inputs
 
 def inference(args):
     # -- Checkpoint 
@@ -61,13 +30,23 @@ def inference(args):
 
     # -- Preprocessing Dataset
     print('\nPreprocessing Dataset')
-    preprocess_fn = partial(preprocess, model_type=args.model_type)
-    test_dset = test_dset.map(preprocess_fn, batched=True)
+    def preprocess(dataset) :
+        inputs = []
+        size = len(dataset['index'])
+        for i in range(size) :
+            data = dataset['premise'][i] + ' [SEP] ' + dataset['hypothesis'][i]
+            inputs.append(data)
+        dataset['inputs'] = inputs
+        return dataset
+    test_dset = test_dset.map(preprocess, batched=True)
 
     # -- Converting Dataset
     print('\nConverting Dataset')
-    convert_fn = partial(convert, tokenizer=tokenizer, max_len=args.max_len, model_type=args.model_type)
-    test_dset = test_dset.map(convert_fn, 
+    def convert(examples, tokenizer, max_len) :
+        inputs = examples['inputs']
+        model_inputs=tokenizer(inputs, max_length=max_len, truncation=True)
+        return model_inputs
+    test_dset = test_dset.map(lambda x : convert(x, tokenizer=tokenizer, max_len=args.max_len), 
         batched=True, 
         remove_columns=test_dset.column_names
     )
@@ -99,10 +78,7 @@ def inference(args):
     model = model.to(device)
     
     # -- Collator
-    if args.model_type == 'seq2seq' :
-        collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=args.max_len)
-    else :
-        collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
+    collator = DataCollatorWithPadding(tokenizer=tokenizer, max_length=args.max_len)
 
     # -- Trainer
     trainer = Trainer(
