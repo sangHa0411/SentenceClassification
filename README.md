@@ -10,13 +10,13 @@
       
 ## Baseline 구축
   1. AutoModelForSequenceClassification, AutoConfig, AutoTokenizer을 이용한 대회에 맞는 모델 및 토크나이저 불러오기
-  2. 다양하 모델을 설계하고 학습해서 성능으 비교하기
+  2. 다양하 모델을 설계하고 학습해서 성능을 비교하기
   3. 학습 과정 및 결과를 보기 위한 wandb 활용
   4. K-fold Validation 및 앙상블을 해보기
-  5. Optuna를 이용해서 Hyperparameter search를 하면서 모델 및 데이터에 맞는 최적의 Hyperparameter search를 찾기
+  5. Optuna를 이용해서 Hyperparameter search를 하면서 모델 및 데이터에 맞는 최적의 Hyperparameter를 찾기
 
 ## Custom Model
-  1. Base Model : klue/roberta-large 모델을 그래도 사용
+  1. Base Model : klue/roberta-large 모델을 그대로 사용
   2. Layer2 : klue/roberta-large에서 output hidden states를 하여서 최종 Layer 2개를 Weight Average한 모델
   3. Layer3 : klue/roberta-large에서 output hidden states를 하여서 최종 Layer 3개를 Weight Average한 모델
   4. MLM : klue/roberta-large 모델, 입력 sequence의 15% token에 대해서 mask 처리하여 학습하는 모델
