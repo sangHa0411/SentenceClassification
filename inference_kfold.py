@@ -132,7 +132,7 @@ def inference(args):
     voted_df = copy.deepcopy(test_df)
     voted_df['label'] = labels
     voted_df = voted_df.drop(columns=['premise', 'hypothesis'])
-    softmax_file = os.path.join(args.output_dir, 'sotmaxvoting.csv')
+    softmax_file = os.path.join(args.output_dir, 'softvoting.csv')
     voted_df.to_csv(softmax_file, index=False)
 
 if __name__ == '__main__':
