@@ -78,9 +78,6 @@
       * Weight Decay 1e-3
       * Steps per each fold : 3900 & Used checkpoint : 3900
 
-## Ensemable
-  1. Layer3 Model -> 5-fold training & Soft Voting
-       
 ## Result
 |Model|Public Accuracy|Private Accuracy|
 |-----|----|----|
