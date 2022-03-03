@@ -1,4 +1,7 @@
 csv
-data
+data/sharing
+data/dev_data.csv
+data/train_data.csv
+data/test_data.csv
 path.env
 backup

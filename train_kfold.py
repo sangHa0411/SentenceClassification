@@ -158,7 +158,6 @@ if __name__ == '__main__':
 
     # -- directory
     parser.add_argument('--output_dir', default='./exp', help='trained model output directory')
-    parser.add_argument('--output_file', default='./results.csv', help='k fold results csv file')
     parser.add_argument('--logging_dir', default='./logs', help='logging directory')
 
     # -- wandb
