@@ -35,7 +35,7 @@
 |train_batch_size|train batch size|32|
 |eval_batch_size|evaluation batch size|16|
 |max_len|input max length|128|
-|warmup_steps|warmup steps|500|
+|warmup_steps|warmup steps|200|
 |weight_decay|weight decay|1e-3|
 |evaluation_strategy|evaluation strategy|steps|
 |gradient_accumulation_steps|gradient accumulation steps|1|
@@ -82,6 +82,15 @@
   1. 5-fold training & Soft Voting
        
 ## Result
-|Model|Accuracy|
-|-----|----|
-|ensemable|90.0|
+|Model|Public Accuracy|Private Accuracy|
+|-----|----|----|
+|ensemable|0.9|0.89435|
+
+## 후기
+  1. 시드를 정확히 고정하고 재현이 잘 되는지 점검하고 시작하기
+  2. 논문에 입각해서 모델을 만들고자 노력하기
+  3. 모델 뿐만 아니라 trainer, loss function 등에도 여러 실험을 해보기
+  4. 다음 대회부터는 hyperparameter르 찾는데 수작업으로 하지 말고 optuna를 활용하기 
+  5. wandb 이외에도 excel를 활용해서 제출물에 대해 기록하여 이전에 했던 실험을 재반복하지 말기
+
+
