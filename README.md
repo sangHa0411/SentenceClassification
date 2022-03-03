@@ -78,7 +78,7 @@
       * Weight Decay 1e-3
       * Steps per each fold : 3900 & Used checkpoint : 3900
 
-## Ensemable : Hardvoting 4 models
+## Ensemable
   1. 5-fold training & Soft Voting
        
 ## Result
