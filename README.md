@@ -79,13 +79,8 @@
       * Steps per each fold : 3900 & Used checkpoint : 3900
 
 ## Ensemable : Hardvoting 4 models
-  1. 5-fold training & Hard Voting
-      1. base
-      2. layer2
-      3. layer3 
-  2. full training
-      1. mlm
-        
+  1. 5-fold training & Soft Voting
+       
 ## Result
 |Model|Accuracy|
 |-----|----|
