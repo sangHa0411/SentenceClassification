@@ -1,4 +1,4 @@
-# DACON-NLI
+# Sentence Classification
 
 ## Goal
   1. Dacon 한국어 문자 관계 분류 경진대회 참가
